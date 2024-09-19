@@ -5,7 +5,7 @@ mongoose.set('strictQuery', false);  //losing commands //ignore if not exist dat
 const connectionToDB = async () => {
    try {
      const { connection } = await mongoose.connect(
-       process.env.MONGODB_URL || "mongodb://localhost:27017/lmsBackend"
+       process.env.MONGO_URI || "mongodb://localhost:27017/lmsBackend"
      );
      if (connection) {
        console.log(`connected to MongoDB ${connection.host}`);

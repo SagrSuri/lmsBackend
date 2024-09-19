@@ -7,3 +7,7 @@ Installing -
 ```javascript
    npm i morgan //this is library for logged tracking
 ```
+
+```info
+    Multer converting binary data to image
+```
