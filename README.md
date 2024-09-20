@@ -18,3 +18,9 @@ Installing -
     npm install nodemailer
 ```
 - For Sending Email to user. Useing 'Nodemailer.com' with testing Mailtrap. only for development
+
+
+#### For Email send we are using gmail api credential // FAILD Implimentation.
+```bash
+  npm install googleapis nodemailer express # ignore which already you installed
+```
