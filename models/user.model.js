@@ -1,6 +1,7 @@
-import { Schema, model } from 'mongoose';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { Schema, model } from 'mongoose'; // for structure define
+import bcrypt from 'bcryptjs'; // for password encrytption
+import jwt from 'jsonwebtoken'; // for cookie set
+import crypto from 'crypto' // for reseting password
 
 const userSchema = new Schema({
   fullName: {
@@ -77,6 +78,20 @@ userSchema.methods.comparePassword = async function(plainTextPassword) {
     throw new Error("Password comparison failed");
   }
 };
+
+userSchema.methods.generatePasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(20).toString('hex');
+
+  this.forgotPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+  
+  this.forgotPasswordExpiry = Date.now() + 15 * 60 * 1000; // 15 min from now
+
+  return resetToken; // Return the plain token for use in the URL
+};
+
 
 const User = model('User', userSchema); // 'User' Model in database
 
