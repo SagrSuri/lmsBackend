@@ -43,6 +43,14 @@ const userSchema = new Schema({
   },
   forgotPasswordToken: String,
   forgotPasswordExpiry: Date,
+
+  emailVerificationToken: String, // New field for verification token
+  emailVerified: {
+    type: Boolean,
+    default: false, // New field to track verification status
+  },
+  emailVerificationExpires: Date, // Add expiration field for email verification
+
 }, {
   timestamps: true,
 });
@@ -91,6 +99,17 @@ userSchema.methods.generatePasswordResetToken = function() {
 
   return resetToken; // Return the plain token for use in the URL
 };
+
+userSchema.methods.createEmailVerificationToken = function() {
+  const verificationToken = crypto.randomBytes(20).toString('hex');
+  this.emailVerificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
+  
+  // Set an expiration time
+  this.emailVerificationExpires = Date.now() + 10 * 60 * 1000; // Token expires in 10 minutes
+  
+  return verificationToken; // Return the plain token for use in the URL
+};
+
 
 
 const User = model('User', userSchema); // 'User' Model in database

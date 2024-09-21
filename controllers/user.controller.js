@@ -19,71 +19,121 @@ const register = async (req, res, next) => {
     return next(new AppError("All fields are required", 400));
   }
 
+  // Check if user already exists
   const userExists = await User.findOne({ email });
   if (userExists) {
     return next(new AppError("Email Already Exists", 400));
   }
 
+  // Create user
   const user = await User.create({
     fullName,
     email,
     password,
     avatar: {
       public_id: email,
-      secure_url:
-        "https://res.cloudinary.com/sagarsuri/image/upload/f_auto,q_auto/sagarsuri",
+      secure_url: "https://res.cloudinary.com/sagarsuri/image/upload/f_auto,q_auto/sagarsuri",
     },
   });
 
   if (!user) {
-    return next(
-      new AppError("User Registration Failed , Please try again", 400)
-    );
+    return next(new AppError("User Registration Failed, Please try again", 400));
   }
 
-  // UPLODING IMAGE FILE IN CLOUDINARY +++++++// configration set on server.js//
-  // ++++++++++++++File comming from multer logic that is req.file +++++++++//
-  if(req.file){
-    
-    // console.log(`File Details >>>>>>>>>>>>>`, JSON.stringify(req.file)) 
+  // **Email Verification Token Generation**
+  const verificationToken = user.createEmailVerificationToken();
+  await user.save({ validateBeforeSave: false }); // Save user with token
+
+  const verificationURL = `${process.env.FRONTEND_URL}/verify-email/${verificationToken}`;
+  const subject = 'Email Verification';
+  const message = `Please verify your email by clicking on this link - <a href='${verificationURL}'> Verify Email </a>`;
+
+  // Send email verification message
+  await sendEmail(user.email, subject, message);
+
+  // **Uploading Avatar to Cloudinary if Image Exists**
+  if (req.file) {
     try {
-        const result = await cloudinary.v2.uploader.upload(req.file.path , {
-            folder: 'lmsBackend',
-            width: 250,
-            height: 250,
-            gravity: 'faces',
-            crop: 'fill'
-        })
+      const result = await cloudinary.v2.uploader.upload(req.file.path, {
+        folder: 'lmsBackend',
+        width: 250,
+        height: 250,
+        gravity: 'faces',
+        crop: 'fill'
+      });
 
-        if(result){
-            user.avatar.public_id = result.public_id,
-            user.avatar.secure_url = result.secure_url
+      if (result) {
+        user.avatar.public_id = result.public_id;
+        user.avatar.secure_url = result.secure_url;
 
-            // Remove File from server
-            fs.rm(`uploads/${req.file.filename}`)
-        }
+        // Remove File from server after upload
+        await fs.rm(`uploads/${req.file.filename}`);
+      }
     } catch (e) {
-        return next(new AppError( e || "File Not Uploaded Please try again"))
+      return next(new AppError(e.message || "File Not Uploaded. Please try again"));
     }
   }
 
-   // Ensure avatar updates are saved
+  // Ensure avatar is saved if modified
   await user.save();
 
-  // Exclude the password in response for security
+  // **Exclude password in response**
   user.password = undefined;
 
-  // Generate JWT token for the user
+  // **Generate JWT token for the user**
   const token = await user.generateJWTToken();
 
-  // Set the cookie with token
+  // **Set the cookie with JWT token**
   res.cookie("token", token, cookieOptions);
 
-  // Send the complete user profile details (without password) in the response
+  // **Send user data in response**
   res.status(201).json({
     success: true,
-    message: "User Registration Successfull.",
-    user, // Full profile details returned
+    message: "User Registration Successful. Please verify your email.",
+    user,
+  });
+};
+
+// ********************EMAIL VERIFICATION ****************//
+const verifyEmail = async (req, res, next) => {
+  const { token } = req.params;
+
+  // Hash the received token
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  // Debug logs
+  console.log("Received plain token:", token);
+  console.log("Hashed token from request:", hashedToken);
+
+  // Find the user with the hashed token and check for verification status
+  const user = await User.findOne({
+    emailVerificationToken: hashedToken,
+    emailVerified: false,
+    emailVerificationExpires: { $gt: Date.now() }, // Ensure the token is still valid
+  });
+
+  // Log the user's email verification data for debugging
+  console.log("User emailVerificationToken in DB (hashed):", user ? user.emailVerificationToken : 'No user found');
+  console.log("User emailVerificationExpires in DB:", user ? user.emailVerificationExpires : 'No user found');
+
+  if (!user) {
+    console.log("No user found with hashed token:", hashedToken);
+    return next(new AppError('Invalid or expired verification token', 400));
+  }
+
+  // Mark email as verified and clear verification data
+  user.emailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpires = undefined;
+  await user.save();
+
+  // Log success message
+  console.log("Email verified successfully for user:", user.email);
+
+  // Respond with success message
+  res.status(200).json({
+    success: true,
+    message: 'Email verified successfully!',
   });
 };
 
@@ -357,5 +407,42 @@ const updateUser = async (req, res, next) => {
 };
 
 
+// **************************** DELETE USER ******************************//
+const deleteUser = async (req, res, next) => {
+  const { confirm, email } = req.body;
 
-export { register, login, logout, getProfile ,forgotPassword, resetPassword , changePassword , updateUser};
+  if (!confirm || confirm !== "DELETE_ACCOUNT") {
+    return next(new AppError("Confirmation is required to delete your account", 400));
+  }
+
+  // Check if the email matches the authenticated user's email
+  const userId = req.user.id; // Get the authenticated user's ID
+  const user = await User.findById(userId);
+  if (!user || user.email !== email) {
+    return next(new AppError("Email does not match your account", 400));
+  }
+
+  try {
+    // Remove the user's avatar from Cloudinary if it exists
+    if (user.avatar.public_id) {
+      await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+    }
+
+    // Delete the user from the database
+    await User.findByIdAndDelete(userId);
+
+    // Respond with success message
+    res.status(200).json({
+      success: true,
+      message: "User account deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return next(new AppError("Failed to delete user, please try again", 500));
+  }
+};
+
+
+
+
+export { register, login, logout, getProfile ,forgotPassword, resetPassword , changePassword , updateUser , deleteUser , verifyEmail};
