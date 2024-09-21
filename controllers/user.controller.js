@@ -237,7 +237,119 @@ const resetPassword = async (req, res, next) => {
   });
 };
 
+// **************************** Change Password ******************************//
+
+const changePassword = async (req, res, next) => {
+  console.log(req.body); // Log the request body to check if oldPassword and newPassword are present
+
+  // Destructure oldPassword and newPassword from the request body
+  const { oldPassword, newPassword } = req.body;
+
+  // Validate input
+  if (!oldPassword || !newPassword) {
+      return next(new AppError('Both old password and new password fields are required', 400));
+  }
+
+  // Fetch the user from the database
+  const user = await User.findById(req.user.id).select('+password'); 
+
+  // Check if the user exists
+  if (!user) {
+      return next(new AppError('User does not exist', 404));
+  }
+
+  // Validate the old password
+  const isPasswordValid = await user.comparePassword(oldPassword);
+  if (!isPasswordValid) {
+      return next(new AppError('Invalid old password', 401));
+  }
+
+  // Update the password
+  user.password = newPassword;
+
+  try {
+      await user.save(); // Save the user with the new password
+      user.password = undefined; // Remove the password from the user object for security
+
+      // Respond with success message
+      res.status(200).json({
+          success: true,
+          message: "Password changed successfully",
+      });
+  } catch (error) {
+      // Handle potential save errors
+      console.error("Error saving new password:", error);
+      return next(new AppError('Failed to change password, please try again', 500));
+  }
+};
+
+// *************************Update User******************************//
+
+const updateUser = async (req, res, next) => {
+  console.log("Request reached updateUser controller");
+
+  try {
+    const { fullName } = req.body;
+    console.log("Full name from body:", fullName);
+
+    const id = req.user?.id; // Safely check if req.user exists
+    if (!id) {
+      console.log("No user ID found");
+      return next(new AppError("User not authenticated", 401));
+    }
+    console.log("Authenticated user ID:", id);
+
+    const user = await User.findById(id);
+    if (!user) {
+      console.log("User does not exist");
+      return next(new AppError("User does not exist", 400));
+    }
+
+    // Update fullName if provided
+    if (fullName) {
+      user.fullName = fullName;
+    }
+
+    // Check if an avatar file was uploaded
+    if (req.file) {
+      console.log("File found, proceeding to upload avatar");
+
+      // Remove old avatar from Cloudinary
+      await cloudinary.v2.uploader.destroy(user.avatar.public_id);
+      const result = await cloudinary.v2.uploader.upload(req.file.path, {
+        folder: "lmsBackend",
+        width: 250,
+        height: 250,
+        gravity: "faces",
+        crop: "fill",
+      });
+
+      if (result) {
+        user.avatar.public_id = result.public_id;
+        user.avatar.secure_url = result.secure_url;
+        console.log("Avatar updated successfully");
+
+        // Remove uploaded file from server
+        await fs.rm(`uploads/${req.file.filename}`);
+        console.log("Uploaded file removed from server");
+      }
+    }
+
+    // Save updated user details
+    await user.save();
+    console.log("User details updated successfully");
+
+    // Respond with success
+    res.status(200).json({
+      success: true,
+      message: "User details updated successfully",
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return next(new AppError(error.message || "Something went wrong.", 500));
+  }
+};
 
 
 
-export { register, login, logout, getProfile ,forgotPassword, resetPassword };
+export { register, login, logout, getProfile ,forgotPassword, resetPassword , changePassword , updateUser};
