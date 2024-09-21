@@ -102,8 +102,8 @@ const verifyEmail = async (req, res, next) => {
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
   // Debug logs
-  console.log("Received plain token:", token);
-  console.log("Hashed token from request:", hashedToken);
+  // console.log("Received plain token:", token);
+  // console.log("Hashed token from request:", hashedToken);
 
   // Find the user with the hashed token and check for verification status
   const user = await User.findOne({
@@ -113,11 +113,11 @@ const verifyEmail = async (req, res, next) => {
   });
 
   // Log the user's email verification data for debugging
-  console.log("User emailVerificationToken in DB (hashed):", user ? user.emailVerificationToken : 'No user found');
-  console.log("User emailVerificationExpires in DB:", user ? user.emailVerificationExpires : 'No user found');
+  // console.log("User emailVerificationToken in DB (hashed):", user ? user.emailVerificationToken : 'No user found');
+  // console.log("User emailVerificationExpires in DB:", user ? user.emailVerificationExpires : 'No user found');
 
   if (!user) {
-    console.log("No user found with hashed token:", hashedToken);
+    // console.log("No user found with hashed token:", hashedToken);
     return next(new AppError('Invalid or expired verification token', 400));
   }
 
@@ -128,7 +128,7 @@ const verifyEmail = async (req, res, next) => {
   await user.save();
 
   // Log success message
-  console.log("Email verified successfully for user:", user.email);
+  // console.log("Email verified successfully for user:", user.email);
 
   // Respond with success message
   res.status(200).json({
