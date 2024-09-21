@@ -226,7 +226,7 @@ const forgotPassword = async (req, res, next) => {
 
     const resetPasswordURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-    console.log(resetPasswordURL);
+    // console.log(resetPasswordURL);
 
     const subject = 'Reset Password';
     const message = `You can reset your password by clicking <a href='${resetPasswordURL}' target='_blank'> Reset Your Password. </a> 
@@ -331,7 +331,7 @@ const changePassword = async (req, res, next) => {
       });
   } catch (error) {
       // Handle potential save errors
-      console.error("Error saving new password:", error);
+      // console.error("Error saving new password:", error);
       return next(new AppError('Failed to change password, please try again', 500));
   }
 };
@@ -356,7 +356,7 @@ const updateUser = async (req, res, next) => {
 
     const user = await User.findById(id);
     if (!user) {
-      console.log("User does not exist");
+      // console.log("User does not exist");
       return next(new AppError("User does not exist", 400));
     }
 
@@ -392,7 +392,7 @@ const updateUser = async (req, res, next) => {
 
     // Save updated user details
     await user.save();
-    console.log("User details updated successfully");
+    // console.log("User details updated successfully");
 
     // Respond with success
     res.status(200).json({
@@ -401,7 +401,7 @@ const updateUser = async (req, res, next) => {
       user,
     });
   } catch (error) {
-    console.error("Error updating user:", error);
+    // console.error("Error updating user:", error);
     return next(new AppError(error.message || "Something went wrong.", 500));
   }
 };
@@ -437,7 +437,7 @@ const deleteUser = async (req, res, next) => {
       message: "User account deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    // console.error("Error deleting user:", error);
     return next(new AppError("Failed to delete user, please try again", 500));
   }
 };
@@ -446,7 +446,8 @@ const deleteUser = async (req, res, next) => {
 const requestEmailChange = async (req, res, next) => {
   const { newEmail } = req.body;
 
-  console.log("Request to change email received for new email:", newEmail);
+  // *********************CONSOLE DEBUG STOP**********************
+  // console.log("Request to change email received for new email:", newEmail);
 
   if (!newEmail) {
     return next(new AppError("New email is required", 400));
@@ -454,13 +455,13 @@ const requestEmailChange = async (req, res, next) => {
 
   const existingUser = await User.findOne({ email: newEmail });
   if (existingUser) {
-    console.log("New email already exists in the database");
+    // console.log("New email already exists in the database");
     return next(new AppError("Email already exists", 400));
   }
 
   const user = await User.findById(req.user.id);
   if (!user) {
-    console.log("User not found");
+    // console.log("User not found");
     return next(new AppError("User not found", 404));
   }
 
@@ -470,13 +471,13 @@ const requestEmailChange = async (req, res, next) => {
   await user.save({ validateBeforeSave: false });
 
   const verificationURL = `${process.env.FRONTEND_URL}/verify-new-email/${emailVerificationToken}`;
-  console.log("Verification URL:", verificationURL);
+  // console.log("Verification URL:", verificationURL);
 
   const subject = 'Verify New Email Address';
   const message = `Please verify your new email by clicking on this link: <a href='${verificationURL}'> Verify New Email </a>`;
   
   await sendEmail(newEmail, subject, message);
-  console.log("Verification email sent to:", newEmail);
+  // console.log("Verification email sent to:", newEmail);
 
   res.status(200).json({
     success: true,
@@ -487,10 +488,10 @@ const requestEmailChange = async (req, res, next) => {
 // ++++++++++++++++VERIFY NEW EMAIL+++++++++++++++++++++++++//
 const verifyNewEmail = async (req, res, next) => {
   const { token } = req.params;
-  console.log("Received token:", token);
+  // console.log("Received token:", token);
 
   const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-  console.log("Hashed token:", hashedToken);
+  // console.log("Hashed token:", hashedToken);
 
   const user = await User.findOne({
     newEmailVerificationToken: hashedToken, // Check against newEmailVerificationToken
@@ -498,7 +499,7 @@ const verifyNewEmail = async (req, res, next) => {
   });
 
   if (!user) {
-    console.log("No user found with the hashed token or token has expired");
+    // console.log("No user found with the hashed token or token has expired");
     return next(new AppError('Invalid or expired verification token', 400));
   }
 
@@ -510,7 +511,7 @@ const verifyNewEmail = async (req, res, next) => {
   user.newEmail = undefined; 
   await user.save();
 
-  console.log("New email verified successfully for user:", user.email);
+  // console.log("New email verified successfully for user:", user.email);
   res.status(200).json({
     success: true,
     message: 'New email verified successfully!',
