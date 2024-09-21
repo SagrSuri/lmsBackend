@@ -44,7 +44,8 @@ const register = async (req, res, next) => {
   // UPLODING IMAGE FILE IN CLOUDINARY +++++++// configration set on server.js//
   // ++++++++++++++File comming from multer logic that is req.file +++++++++//
   if(req.file){
-    console.log(`File Details >>>>>>>>>>>>>`, JSON.stringify(req.file))
+    
+    // console.log(`File Details >>>>>>>>>>>>>`, JSON.stringify(req.file)) 
     try {
         const result = await cloudinary.v2.uploader.upload(req.file.path , {
             folder: 'lmsBackend',
@@ -213,7 +214,8 @@ const resetPassword = async (req, res, next) => {
     .update(resetToken)
     .digest('hex');
 
-  console.log("Hashed token:", forgotPasswordToken);
+    // ******************CONSOLE DESABLE MESSAGE*************//
+  // console.log("Hashed token:", forgotPasswordToken);
 
   const user = await User.findOne({
     forgotPasswordToken,
@@ -221,7 +223,8 @@ const resetPassword = async (req, res, next) => {
   });
 
   if (!user) {
-    console.log("Invalid or expired token");
+
+    // console.log("Invalid or expired token");
     return next(new AppError("Token is Invalid or Expired, Please Try Again", 400));
   }
 
@@ -240,7 +243,7 @@ const resetPassword = async (req, res, next) => {
 // **************************** Change Password ******************************//
 
 const changePassword = async (req, res, next) => {
-  console.log(req.body); // Log the request body to check if oldPassword and newPassword are present
+  // console.log(req.body); // Log the request body to check if oldPassword and newPassword are present
 
   // Destructure oldPassword and newPassword from the request body
   const { oldPassword, newPassword } = req.body;
@@ -286,18 +289,20 @@ const changePassword = async (req, res, next) => {
 // *************************Update User******************************//
 
 const updateUser = async (req, res, next) => {
-  console.log("Request reached updateUser controller");
+  // ******************CONSOLE MESSAGE desabled*************//
+  // console.log("Request reached updateUser controller");
 
   try {
     const { fullName } = req.body;
-    console.log("Full name from body:", fullName);
+    
+    // console.log("Full name from body:", fullName);
 
     const id = req.user?.id; // Safely check if req.user exists
     if (!id) {
-      console.log("No user ID found");
+      // console.log("No user ID found");
       return next(new AppError("User not authenticated", 401));
     }
-    console.log("Authenticated user ID:", id);
+    // console.log("Authenticated user ID:", id);
 
     const user = await User.findById(id);
     if (!user) {
@@ -312,7 +317,7 @@ const updateUser = async (req, res, next) => {
 
     // Check if an avatar file was uploaded
     if (req.file) {
-      console.log("File found, proceeding to upload avatar");
+      // console.log("File found, proceeding to upload avatar");
 
       // Remove old avatar from Cloudinary
       await cloudinary.v2.uploader.destroy(user.avatar.public_id);
@@ -327,11 +332,11 @@ const updateUser = async (req, res, next) => {
       if (result) {
         user.avatar.public_id = result.public_id;
         user.avatar.secure_url = result.secure_url;
-        console.log("Avatar updated successfully");
+        // console.log("Avatar updated successfully");
 
         // Remove uploaded file from server
         await fs.rm(`uploads/${req.file.filename}`);
-        console.log("Uploaded file removed from server");
+        // console.log("Uploaded file removed from server");
       }
     }
 
@@ -343,6 +348,7 @@ const updateUser = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "User details updated successfully",
+      user,
     });
   } catch (error) {
     console.error("Error updating user:", error);
