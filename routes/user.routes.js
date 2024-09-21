@@ -1,5 +1,5 @@
 import {Router} from 'express'
-import { changePassword, deleteUser, forgotPassword, getProfile, login, logout, register, resetPassword, updateUser, verifyEmail } from '../controllers/user.controller.js';
+import { changePassword, deleteUser, forgotPassword, getProfile, login, logout, register, requestEmailChange, resetPassword, updateUser, verifyEmail, verifyNewEmail } from '../controllers/user.controller.js';
 import { isLoggedIn } from '../middlewares/auth.middleware.js';
 import upload from '../middlewares/multer.middleware.js';
 
@@ -16,5 +16,8 @@ userRoutes.put('/update', isLoggedIn, upload.single('avatar'), updateUser )
 userRoutes.delete('/delete-account', isLoggedIn, deleteUser)
 userRoutes.get('/verify-email/:token', verifyEmail); 
 
+// **New routes for email change**
+userRoutes.post('/change-email', isLoggedIn, requestEmailChange); // Route to request email change
+userRoutes.get('/verify-new-email/:token', verifyNewEmail); // Route to verify the new email
 
 export default userRoutes;

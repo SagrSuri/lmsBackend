@@ -442,7 +442,80 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
+// ++++++++++++++++REQUEST EMAIL CHANGE**************//
+const requestEmailChange = async (req, res, next) => {
+  const { newEmail } = req.body;
+
+  console.log("Request to change email received for new email:", newEmail);
+
+  if (!newEmail) {
+    return next(new AppError("New email is required", 400));
+  }
+
+  const existingUser = await User.findOne({ email: newEmail });
+  if (existingUser) {
+    console.log("New email already exists in the database");
+    return next(new AppError("Email already exists", 400));
+  }
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    console.log("User not found");
+    return next(new AppError("User not found", 404));
+  }
+
+  // Generate email verification token for the new email
+  const emailVerificationToken = user.createNewEmailVerificationToken(); // Updated method call
+  user.newEmail = newEmail; // Temporarily store the new email
+  await user.save({ validateBeforeSave: false });
+
+  const verificationURL = `${process.env.FRONTEND_URL}/verify-new-email/${emailVerificationToken}`;
+  console.log("Verification URL:", verificationURL);
+
+  const subject = 'Verify New Email Address';
+  const message = `Please verify your new email by clicking on this link: <a href='${verificationURL}'> Verify New Email </a>`;
+  
+  await sendEmail(newEmail, subject, message);
+  console.log("Verification email sent to:", newEmail);
+
+  res.status(200).json({
+    success: true,
+    message: "Verification email sent to new address.",
+  });
+};
+
+// ++++++++++++++++VERIFY NEW EMAIL+++++++++++++++++++++++++//
+const verifyNewEmail = async (req, res, next) => {
+  const { token } = req.params;
+  console.log("Received token:", token);
+
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+  console.log("Hashed token:", hashedToken);
+
+  const user = await User.findOne({
+    newEmailVerificationToken: hashedToken, // Check against newEmailVerificationToken
+    newEmailVerificationExpires: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    console.log("No user found with the hashed token or token has expired");
+    return next(new AppError('Invalid or expired verification token', 400));
+  }
+
+  // Update user email and clear verification data
+  user.email = user.newEmail; 
+  user.emailVerified = true; 
+  user.newEmailVerificationToken = undefined; 
+  user.newEmailVerificationExpires = undefined; 
+  user.newEmail = undefined; 
+  await user.save();
+
+  console.log("New email verified successfully for user:", user.email);
+  res.status(200).json({
+    success: true,
+    message: 'New email verified successfully!',
+  });
+};
 
 
-
-export { register, login, logout, getProfile ,forgotPassword, resetPassword , changePassword , updateUser , deleteUser , verifyEmail};
+export { register, login, logout, getProfile ,forgotPassword, resetPassword , changePassword , updateUser , deleteUser , verifyEmail , requestEmailChange , verifyNewEmail};

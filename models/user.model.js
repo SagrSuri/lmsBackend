@@ -44,12 +44,27 @@ const userSchema = new Schema({
   forgotPasswordToken: String,
   forgotPasswordExpiry: Date,
 
+
   emailVerificationToken: String, // New field for verification token
   emailVerified: {
     type: Boolean,
     default: false, // New field to track verification status
   },
   emailVerificationExpires: Date, // Add expiration field for email verification
+
+    //+++++++++++++New fields for email change
+    newEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 
+        "Please enter a valid email address"
+      ]
+    },
+    newEmailVerificationToken: String,
+    newEmailVerificationExpires: Date,
+
 
 }, {
   timestamps: true,
@@ -111,6 +126,16 @@ userSchema.methods.createEmailVerificationToken = function() {
 };
 
 
+// ++++++++++++++++Change EMail
+// New email change token generation
+userSchema.methods.createNewEmailVerificationToken = function() {
+  const newEmailToken = crypto.randomBytes(20).toString('hex');
+  this.newEmailVerificationToken = crypto.createHash('sha256').update(newEmailToken).digest('hex');
+  
+  this.newEmailVerificationExpires = Date.now() + 10 * 60 * 1000; // Token expires in 10 minutes
+
+  return newEmailToken;
+};
 
 const User = model('User', userSchema); // 'User' Model in database
 
