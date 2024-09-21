@@ -42,7 +42,7 @@ const userSchema = new Schema({
     default: 'USER'
   },
   forgotPasswordToken: String,
-  forgotPasswordExpiry: Date
+  forgotPasswordExpiry: Date,
 }, {
   timestamps: true,
 });

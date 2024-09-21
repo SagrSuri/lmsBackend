@@ -9,8 +9,8 @@ userRoutes.post('/register' , upload.single('avatar') , register)
 userRoutes.post('/login' , login)
 userRoutes.get('/logout' , logout)
 userRoutes.get('/me' , isLoggedIn, getProfile)
-userRoutes.post('/reset', forgotPassword)
-userRoutes.post('/reset/:resetToken' , resetPassword)
+userRoutes.post('/reset-password', forgotPassword)
+userRoutes.post('/reset-password/:resetToken' , resetPassword)
 
 
 

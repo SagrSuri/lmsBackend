@@ -3,6 +3,7 @@ import AppError from "../utils/error.util.js";
 import cloudinary from 'cloudinary'
 import fs from 'fs/promises'
 import sendEmail from "../utils/sendEmail.js";
+import crypto from 'crypto'
 
 const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -174,6 +175,8 @@ const forgotPassword = async (req, res, next) => {
 
     const resetPasswordURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
+    console.log(resetPasswordURL);
+
     const subject = 'Reset Password';
     const message = `You can reset your password by clicking <a href='${resetPasswordURL}' target='_blank'> Reset Your Password. </a> 
                      \n If the above link does not work for some reason, copy and paste this link in a new tab: ${resetPasswordURL}. 
@@ -196,8 +199,45 @@ const forgotPassword = async (req, res, next) => {
 };
 
 // **************************** Reset Passwrod *****************************//
-const resetPassword = () => {
-  
-}
+
+const resetPassword = async (req, res, next) => {
+  const { resetToken } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return next(new AppError("Password is required", 400));
+  }
+
+  const forgotPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  console.log("Hashed token:", forgotPasswordToken);
+
+  const user = await User.findOne({
+    forgotPasswordToken,
+    forgotPasswordExpiry: { $gt: Date.now() }
+  });
+
+  if (!user) {
+    console.log("Invalid or expired token");
+    return next(new AppError("Token is Invalid or Expired, Please Try Again", 400));
+  }
+
+  user.password = password;          
+  user.forgotPasswordToken = undefined; 
+  user.forgotPasswordExpiry = undefined; 
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Your Password Changed Successfully"
+  });
+};
+
+
+
 
 export { register, login, logout, getProfile ,forgotPassword, resetPassword };
